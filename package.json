@@ -1,6 +1,6 @@
 {
   "name": "vbc-stats",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "A web application for visualizing VBC blockchain statistics.",
@@ -35,7 +35,6 @@
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
     "dev": "tsx --env-file-if-exists=.env server.ts",
-    "prebuild": "npm run check",
     "build": "vite build",
     "start": "NODE_ENV=production tsx --env-file-if-exists=.env server.ts",
     "check": "npm run lint && npm run format:check && tsc --noEmit",

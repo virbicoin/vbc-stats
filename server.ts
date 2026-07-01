@@ -1,13 +1,14 @@
 #!/usr/bin/env tsx
-// Unified server: Vite (dev) / static client (prod) + WebSocket (Primus) on one port
-import express from 'express';
+// Server: Vite middleware (dev) + WebSocket (Primus) on one port.
+// In production the static client (dist/) is served by Nginx, which reverse-
+// proxies /primus, /external, /api and /geoip to this process — so this process
+// does no static file serving in production.
 import expressApp from './lib/express.js';
 import { banned, reserved, loadGeoOverrides } from './lib/utils/config.js';
 import Collection from './lib/collection.js';
 import type { NodeData } from './lib/collection.js';
 import geoip from 'geoip-lite';
 import http from 'http';
-import path from 'path';
 import Primus from 'primus';
 import primusEmit from 'primus-emit';
 import primusSparkLatency from 'primus-spark-latency';
@@ -1086,8 +1087,9 @@ setInterval(() => {
 
 // Start the unified server. In development, Vite runs in middleware mode so the
 // client (with HMR) is served from this same port and http server as the Primus
-// WebSocket endpoints. In production, the prebuilt client in dist/ is served
-// statically with an SPA fallback to index.html.
+// WebSocket endpoints. In production the static client (dist/) is served by
+// Nginx, which reverse-proxies /primus, /external, /api and /geoip here — so
+// this process does no static file serving.
 async function start(): Promise<void> {
   if (dev) {
     const { createServer: createViteServer } = await import('vite');
@@ -1101,14 +1103,8 @@ async function start(): Promise<void> {
       appType: 'spa',
     });
     app.use(vite.middlewares);
-  } else {
-    const distDir = path.resolve(process.cwd(), 'dist');
-    app.use(express.static(distDir));
-    // SPA fallback: hand any non-API, non-asset request to the built index.html.
-    app.use((_req, res) => {
-      res.sendFile(path.join(distDir, 'index.html'));
-    });
   }
+  // Production: static client (dist/) is served by Nginx (see deploy/nginx.conf.example).
 
   server.listen(PORT, () => {
     console.log(

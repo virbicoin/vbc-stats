@@ -157,13 +157,15 @@ vbc-stats/
 
 ## 🏗️ Architecture
 
-The server (`server.ts`) runs on a single port, providing:
+**Development** — `server.ts` runs Vite (middleware) + WebSocket on one port.
+**Production** — Nginx serves the static client (`dist/`) and reverse-proxies the
+WebSocket/geoip endpoints below to `server.ts` (see [deploy/nginx.conf.example](deploy/nginx.conf.example)):
 
 - **`/primus`** — WebSocket for browser clients (real-time dashboard updates)
 - **`/external`** — WebSocket for external services
 - **`/api`** — WebSocket for blockchain nodes (miners/validators)
 - **`/geoip`** — GeoIP lookup (Express)
-- **`/*`** — Client: Vite middleware (dev) / static `dist/` with SPA fallback (prod)
+- **`/*`** — Client: Vite middleware (dev) / **Nginx serves `dist/`** (prod)
 
 ## ⚙️ Configuration
 
@@ -189,14 +191,23 @@ deployment-specific knobs improve this without changing source code:
   (git-ignored) or point `GEO_OVERRIDES_FILE` at your own file, then restart.
   Each key matches a node's id or display name and takes precedence over geoip.
 
-## 🐳 Docker Deployment
+## 🚀 Deployment (SSG: static frontend + WebSocket backend)
+
+Production serves the built static client via **Nginx**, which reverse-proxies the
+WebSocket/geoip endpoints to the Node backend (`server.ts`). Cloudflare sits in
+front of Nginx as a proxy only.
 
 ```bash
-docker build -t vbc-stats .
-docker run -d -p 5000:5000 \
-  -e WS_SECRET=your_secret \
-  vbc-stats
+# On the server
+git pull
+npm ci
+npm run build                      # generates dist/ (the static client Nginx serves)
+NODE_ENV=production npm run start   # server.ts (WebSocket + geoip) on :5000
+                                   # use pm2/systemd to keep it alive
 ```
+
+Then point Nginx at `dist/` and proxy `/primus`, `/external`, `/api`, `/geoip`
+to `127.0.0.1:5000`. See **[deploy/nginx.conf.example](deploy/nginx.conf.example)**.
 
 ## 🔒 Security
 

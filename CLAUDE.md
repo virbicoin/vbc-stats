@@ -103,13 +103,13 @@ VITE_WS_URL=           # クライアント用WebSocket URL（省略時は同一
 
 ### 1. 統合サーバーアーキテクチャ
 
-`server.ts`が単一ポートでクライアント配信とPrimus WebSocketを同時に提供：
+開発時は `server.ts` が単一ポートでクライアント配信（Vite middleware）と Primus WebSocket を同時に提供。本番はフロント（`dist/`）を Nginx が静的配信し、下記の WebSocket と geoip のみ server.ts へリバースプロキシする（フロント/バック分離の SSG 構成、[deploy/nginx.conf.example](deploy/nginx.conf.example)）：
 
 - `/primus` - クライアント（ブラウザ）向けWebSocket
 - `/external` - 外部サービス向けWebSocket
 - `/api` - ノード（マイナー）からのデータ受信WebSocket
 - `/geoip` - GeoIPルックアップ（Express、`lib/routes/geoip.ts`）。Primusが`/api`を占有するため`/api`配下に置けない
-- その他全て - 開発時は Vite middleware（HMR）、本番時は `dist/` を静的配信＋SPAフォールバック
+- その他全て（`/`） - 開発時は Vite middleware（HMR）。本番は Nginx が `dist/` を静的配信＋SPAフォールバック（server.ts は本番で静的配信しない）
 
 開発時の HMR WebSocket は同じ http サーバーを共有（`hmr: { server }`）し、Primus の各エンドポイントと共存する。
 
