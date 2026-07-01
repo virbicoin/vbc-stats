@@ -1,4 +1,3 @@
-'use client';
 import React, { useState } from 'react';
 import { SiGithub, SiX, SiBitcoin, SiDiscord, SiTelegram } from 'react-icons/si';
 

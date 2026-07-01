@@ -1,10 +1,9 @@
-'use client';
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix for default markers in Next.js
+// Fix for default marker icon paths when bundling Leaflet
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -337,13 +336,6 @@ const Map: React.FC<MapProps> = ({ nodes }) => {
           </div>,
           document.body
         )}
-
-      <style jsx global>{`
-        .custom-node-marker {
-          background: transparent !important;
-          border: none !important;
-        }
-      `}</style>
     </div>
   );
 };

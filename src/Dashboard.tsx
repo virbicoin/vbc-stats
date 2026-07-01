@@ -1,5 +1,4 @@
-'use client';
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, lazy, Suspense } from 'react';
 import {
   FaCube,
   FaLayerGroup,
@@ -10,8 +9,6 @@ import {
   FaUsers,
   FaMoneyBillWave,
 } from 'react-icons/fa';
-import dynamic from 'next/dynamic';
-
 // GeoIP-lite import for server-side IP geolocation
 // Note: This will only work on the server side, so we'll use a different approach for client-side
 
@@ -22,35 +19,18 @@ import dynamic from 'next/dynamic';
 //   write: (data: unknown) => void;
 // };
 
-const Charts = dynamic(
-  () => import('@/components/Charts').then((mod) => ({ default: mod.default })),
-  {
-    loading: () => (
-      <div className="flex h-full w-full items-center justify-center rounded bg-[#0d1421]">
-        <p className="text-gray-400">Loading Chart...</p>
-      </div>
-    ),
-    ssr: false,
-  }
-);
+const Charts = lazy(() => import('@/components/Charts'));
+const HalvingCountdown = lazy(() => import('@/components/HalvingCountdown'));
+const Nodes = lazy(() => import('@/components/Nodes'));
 
-const HalvingCountdown = dynamic(() => import('@/components/HalvingCountdown'), {
-  loading: () => (
+// Shared fallback shown while a lazily-loaded section's chunk downloads.
+function SectionLoading({ label }: { label: string }): React.ReactNode {
+  return (
     <div className="flex h-full w-full items-center justify-center rounded bg-[#0d1421]">
-      <p className="text-gray-400">Loading Halving Countdown...</p>
+      <p className="text-gray-400">{label}</p>
     </div>
-  ),
-  ssr: false,
-});
-
-const Nodes = dynamic(() => import('@/components/Nodes'), {
-  loading: () => (
-    <div className="flex h-full w-full items-center justify-center rounded bg-[#0d1421]">
-      <p className="text-gray-400">Loading Nodes...</p>
-    </div>
-  ),
-  ssr: false,
-});
+  );
+}
 
 interface Node {
   id: string | number;
@@ -280,7 +260,7 @@ function HomePage() {
       }
 
       // Make API request to our GeoIP endpoint
-      const response = await fetch(`/api/geoip?ip=${encodeURIComponent(cleanIp)}`);
+      const response = await fetch(`/geoip?ip=${encodeURIComponent(cleanIp)}`);
       if (!response.ok) {
         console.warn(`GeoIP API request failed for ${cleanIp}:`, response.status);
         return null;
@@ -506,8 +486,8 @@ function HomePage() {
     // Don't increment attempts here - only increment on actual connection failures
 
     // Determine the appropriate server URL based on environment
-    const customWsUrl = process.env['NEXT_PUBLIC_WS_URL'];
-    const isProduction = process.env.NODE_ENV === 'production';
+    const customWsUrl = import.meta.env.VITE_WS_URL;
+    const isProduction = import.meta.env.PROD;
 
     // Use custom WS URL if provided, otherwise use same origin (unified server)
     let baseUrl: string;
@@ -1611,28 +1591,34 @@ function HomePage() {
 
         {/* Halving Countdown */}
         <div className="mb-8">
-          <HalvingCountdown
-            bestBlock={
-              stableBestBlock !== null
-                ? stableBestBlock
-                : typeof stats['bestBlock']?.value === 'number'
-                  ? Number(stats['bestBlock'].value)
-                  : null
-            }
-            avgBlockTime={stableAvgBlockTime}
-          />
+          <Suspense fallback={<SectionLoading label="Loading Halving Countdown..." />}>
+            <HalvingCountdown
+              bestBlock={
+                stableBestBlock !== null
+                  ? stableBestBlock
+                  : typeof stats['bestBlock']?.value === 'number'
+                    ? Number(stats['bestBlock'].value)
+                    : null
+              }
+              avgBlockTime={stableAvgBlockTime}
+            />
+          </Suspense>
         </div>
 
         {/* Charts and Visualizations */}
         <div className="mb-8">
-          <Charts currentStats={stats} nodes={nodes} />
+          <Suspense fallback={<SectionLoading label="Loading Chart..." />}>
+            <Charts currentStats={stats} nodes={nodes} />
+          </Suspense>
         </div>
 
         {/* Nodes Table */}
-        <Nodes
-          nodes={nodes}
-          bestBlock={typeof stats['bestBlock']?.value === 'number' ? stats['bestBlock'].value : 0}
-        />
+        <Suspense fallback={<SectionLoading label="Loading Nodes..." />}>
+          <Nodes
+            nodes={nodes}
+            bestBlock={typeof stats['bestBlock']?.value === 'number' ? stats['bestBlock'].value : 0}
+          />
+        </Suspense>
       </main>
     </div>
   );

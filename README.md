@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js" alt="Next.js">
+  <img src="https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite">
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
@@ -73,7 +73,7 @@ VBC Stats is a modern, real-time blockchain network statistics dashboard for Vir
 - **Modern UI** — Responsive design with Tailwind CSS 4
 - **Interactive Charts** — Recharts-powered visualizations
 - **Node Management** — Sortable, filterable node table with real-time updates
-- **Unified Server** — Single port serves both Next.js and WebSocket
+- **Unified Server** — Single port serves the client (Vite dev / static) and WebSocket
 - **Docker Support** — Production-ready Docker configuration
 - **geth Compatible** — Works with eth-netstats-client protocol
 
@@ -97,7 +97,7 @@ Open [http://localhost:5000](http://localhost:5000) to view the dashboard.
 
 | Category   | Technology                                       |
 | ---------- | ------------------------------------------------ |
-| Framework  | [Next.js 16](https://nextjs.org) with Turbopack  |
+| Build Tool | [Vite 8](https://vite.dev)                       |
 | UI Library | [React 19](https://react.dev)                    |
 | Language   | [TypeScript 6](https://www.typescriptlang.org)   |
 | Styling    | [Tailwind CSS 4](https://tailwindcss.com)        |
@@ -112,7 +112,7 @@ Open [http://localhost:5000](http://localhost:5000) to view the dashboard.
 
 | Command             | Description                                        |
 | ------------------- | -------------------------------------------------- |
-| `npm run dev`       | Start dev server (unified Next.js + WebSocket)     |
+| `npm run dev`       | Start dev server (Vite middleware + WebSocket)     |
 | `npm run build`     | Build for production                               |
 | `npm run start`     | Start production server                            |
 | `npm run check`     | Run all quality checks (lint + format + typecheck) |
@@ -128,26 +128,29 @@ Open [http://localhost:5000](http://localhost:5000) to view the dashboard.
 
 ```
 vbc-stats/
-├── src/                        # Frontend source
-│   ├── app/                    # Next.js App Router
-│   │   ├── page.tsx            # Main dashboard page
-│   │   ├── layout.tsx          # Root layout
-│   │   ├── globals.css         # Global styles
-│   │   ├── components/         # Page-specific components
-│   │   └── api/geoip/route.ts  # GeoIP API endpoint
+├── index.html                  # Vite entry HTML (metadata, fonts, #root)
+├── src/                        # Frontend source (SPA)
+│   ├── main.tsx                # Entry point (createRoot)
+│   ├── App.tsx                 # Root component (Header + Dashboard + Footer)
+│   ├── Dashboard.tsx           # Main dashboard (formerly app/page.tsx)
+│   ├── index.css               # Global styles (Tailwind)
 │   ├── components/             # Reusable UI components
-│   │   ├── Charts.tsx          # Chart grid (Recharts)
+│   │   ├── Charts.tsx          # Chart grid (Recharts, lazy-loads Map)
 │   │   ├── HalvingCountdown.tsx # Block reward halving countdown
 │   │   ├── Nodes.tsx           # Node table
 │   │   ├── Map.tsx             # Leaflet world map
+│   │   ├── MinerBlocks.tsx     # Miner block display
 │   │   ├── header.tsx          # Header
 │   │   └── footer.tsx          # Footer
-│   └── types/                  # TypeScript declarations
+│   ├── types/                  # TypeScript declarations
+│   └── vite-env.d.ts           # Vite client types
 ├── lib/                        # Server-side libraries
 │   ├── collection.ts           # Node collection management
-│   ├── express.ts              # Express app setup
+│   ├── express.ts              # Express app setup (+ /geoip)
+│   ├── routes/geoip.ts         # GeoIP API handler (Express)
 │   └── utils/config.ts         # Server configuration
-├── server.ts                   # Unified server (Next.js + Primus)
+├── server.ts                   # Unified server (Express + Vite/static + Primus)
+├── vite.config.ts              # Vite config (client build → dist/, @ alias)
 ├── public/                     # Static assets
 └── Dockerfile                  # Production Docker image
 ```
@@ -159,16 +162,17 @@ The server (`server.ts`) runs on a single port, providing:
 - **`/primus`** — WebSocket for browser clients (real-time dashboard updates)
 - **`/external`** — WebSocket for external services
 - **`/api`** — WebSocket for blockchain nodes (miners/validators)
-- **`/*`** — Next.js App Router (all HTTP requests)
+- **`/geoip`** — GeoIP lookup (Express)
+- **`/*`** — Client: Vite middleware (dev) / static `dist/` with SPA fallback (prod)
 
 ## ⚙️ Configuration
 
 Create a `.env` file:
 
 ```env
-PORT=5000              # Server port (Next.js + WebSocket unified)
+PORT=5000              # Server port (client + WebSocket unified)
 WS_SECRET=your_secret  # WebSocket auth secret (multiple: secret1|secret2)
-NEXT_PUBLIC_WS_URL=    # Client WebSocket URL (omit for same-origin)
+VITE_WS_URL=           # Client WebSocket URL (omit for same-origin)
 ```
 
 ### GeoIP accuracy

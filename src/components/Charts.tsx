@@ -1,5 +1,4 @@
-'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import {
   LineChart,
   Line,
@@ -12,16 +11,13 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
-import dynamic from 'next/dynamic';
+const Map = lazy(() => import('./Map'));
 
-const Map = dynamic(() => import('./Map'), {
-  loading: () => (
-    <div className="flex h-full w-full items-center justify-center border border-[#1e3a5f] bg-[#0d1421]">
-      <p className="text-gray-400">Loading Map...</p>
-    </div>
-  ),
-  ssr: false,
-});
+const MapLoading = (
+  <div className="flex h-full w-full items-center justify-center border border-[#1e3a5f] bg-[#0d1421]">
+    <p className="text-gray-400">Loading Map...</p>
+  </div>
+);
 
 interface Node {
   id: string | number;
@@ -349,7 +345,9 @@ const Charts: React.FC<ChartsProps> = ({ nodes = [] }) => {
       <div className="relative col-span-2 h-64 rounded-lg border border-[#1e3a5f] bg-[#0d1421] p-6">
         <h3 className="relative z-10 mb-4 text-lg font-semibold text-white">Network Map</h3>
         <div className="absolute inset-6 overflow-hidden rounded bg-[#0d1421]">
-          <Map nodes={nodes} />
+          <Suspense fallback={MapLoading}>
+            <Map nodes={nodes} />
+          </Suspense>
         </div>
       </div>
     </div>

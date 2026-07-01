@@ -1,13 +1,14 @@
 #!/usr/bin/env tsx
-// Unified server: Next.js + WebSocket (Primus) on a single port
+// Unified server: Vite (dev) / static client (prod) + WebSocket (Primus) on one port
+import express from 'express';
 import expressApp from './lib/express.js';
 import { banned, reserved, loadGeoOverrides } from './lib/utils/config.js';
 import Collection from './lib/collection.js';
 import type { NodeData } from './lib/collection.js';
 import geoip from 'geoip-lite';
 import http from 'http';
+import path from 'path';
 import Primus from 'primus';
-import next from 'next';
 import primusEmit from 'primus-emit';
 import primusSparkLatency from 'primus-spark-latency';
 
@@ -15,10 +16,6 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 const dev = process.env.NODE_ENV !== 'production';
 const WS_SECRET_ENV = process.env.WS_SECRET || '';
 const WS_SECRET = WS_SECRET_ENV.includes('|') ? WS_SECRET_ENV.split('|') : [WS_SECRET_ENV];
-
-// Initialize Next.js
-const nextApp = next({ dev });
-const nextHandler = nextApp.getRequestHandler();
 
 const app = expressApp;
 const server = http.createServer(app);
@@ -1087,21 +1084,40 @@ setInterval(() => {
   });
 }, 5000);
 
-// Prepare Next.js and start the unified server
-nextApp
-  .prepare()
-  .then(() => {
-    app.all('{*path}', (req: any, res: any) => {
-      return nextHandler(req, res);
+// Start the unified server. In development, Vite runs in middleware mode so the
+// client (with HMR) is served from this same port and http server as the Primus
+// WebSocket endpoints. In production, the prebuilt client in dist/ is served
+// statically with an SPA fallback to index.html.
+async function start(): Promise<void> {
+  if (dev) {
+    const { createServer: createViteServer } = await import('vite');
+    const vite = await createViteServer({
+      server: {
+        middlewareMode: true,
+        // Share this http server for Vite's HMR websocket so it coexists with
+        // the Primus endpoints (/primus, /external, /api) on a single port.
+        hmr: { server },
+      },
+      appType: 'spa',
     });
+    app.use(vite.middlewares);
+  } else {
+    const distDir = path.resolve(process.cwd(), 'dist');
+    app.use(express.static(distDir));
+    // SPA fallback: hand any non-API, non-asset request to the built index.html.
+    app.use((_req, res) => {
+      res.sendFile(path.join(distDir, 'index.html'));
+    });
+  }
 
-    server.listen(PORT, () => {
-      console.log(
-        `Server listening on http://localhost:${PORT} (${dev ? 'development' : 'production'})`
-      );
-    });
-  })
-  .catch((err: Error) => {
-    console.error('Failed to start Next.js:', err);
-    process.exit(1);
+  server.listen(PORT, () => {
+    console.log(
+      `Server listening on http://localhost:${PORT} (${dev ? 'development' : 'production'})`
+    );
   });
+}
+
+start().catch((err: Error) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+});
