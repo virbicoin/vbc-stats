@@ -175,6 +175,7 @@ Create a `.env` file:
 PORT=5000              # Server port (client + WebSocket unified)
 WS_SECRET=your_secret  # WebSocket auth secret (multiple: secret1|secret2)
 VITE_WS_URL=           # Client WebSocket URL (omit for same-origin)
+VITE_CARTO_API_KEY=    # Optional CARTO basemap key (omit → Esri dark tiles, no key)
 ```
 
 ### GeoIP accuracy
@@ -190,6 +191,18 @@ deployment-specific knobs improve this without changing source code:
 - **Pin known nodes** — copy `geo-overrides.example.json` to `geo-overrides.json`
   (git-ignored) or point `GEO_OVERRIDES_FILE` at your own file, then restart.
   Each key matches a node's id or display name and takes precedence over geoip.
+
+### Map tiles
+
+The network map uses Esri's **World Dark Gray Base** tiles by default, which
+need no API key (Esri lists the service as mature support, retiring December
+2029). To use CARTO **Dark Matter** instead — CARTO's raster basemaps require a
+key since 2026-09-25 — get a free key at <https://carto.com/basemaps/apikey>,
+restrict it to your hostname in the CARTO dashboard, and set
+`VITE_CARTO_API_KEY` **at build time** (`npm run build`, or
+`docker build --build-arg VITE_CARTO_API_KEY=...`). The key is embedded in the
+client bundle, so treat it as public and rely on CARTO's website restriction.
+Either way the map shows the provider attribution, which the tile terms require.
 
 ## 🚀 Deployment (SSG: static frontend + WebSocket backend)
 

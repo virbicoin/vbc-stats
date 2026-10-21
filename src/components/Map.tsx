@@ -43,6 +43,59 @@ interface MapProps {
   nodes: Node[];
 }
 
+// Basemap tile provider.
+//
+// CARTO's free raster basemaps (Dark Matter) have required an API key since
+// 2026-09-25; keyless requests get an "API KEY REQUIRED" placeholder tile.
+// Default to Esri's keyless World Dark Gray Base and switch to CARTO only when
+// VITE_CARTO_API_KEY is set. The key is baked into the client bundle at build
+// time, so it is public: restrict it to this site's hostname in CARTO's dashboard.
+const CARTO_API_KEY = (import.meta.env.VITE_CARTO_API_KEY ?? '').trim();
+
+interface Basemap {
+  url: string;
+  options: L.TileLayerOptions;
+  /** Provider credit shown over the map; visible attribution is a license requirement */
+  attribution: React.ReactNode;
+}
+
+const attributionLink = (href: string, label: string) => (
+  <a
+    href={href}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-blue-300 hover:underline"
+  >
+    {label}
+  </a>
+);
+
+const BASEMAP: Basemap = CARTO_API_KEY
+  ? {
+      url: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(CARTO_API_KEY)}`,
+      options: { subdomains: 'abcd', maxZoom: 10 },
+      attribution: (
+        <>
+          &copy; {attributionLink('https://www.openstreetmap.org/copyright', 'OpenStreetMap')}{' '}
+          contributors &copy; {attributionLink('https://carto.com/attributions', 'CARTO')}
+        </>
+      ),
+    }
+  : {
+      // Esri World Dark Gray Base: no key, {z}/{y}/{x} order, 256px JPEG tiles,
+      // worldwide coverage up to zoom 10. The service is in mature support (no data
+      // updates) and scheduled for retirement in December 2029.
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+      options: { maxZoom: 10 },
+      attribution: (
+        <>
+          Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy;{' '}
+          {attributionLink('https://www.openstreetmap.org/copyright', 'OpenStreetMap')}{' '}
+          contributors, and the GIS user community
+        </>
+      ),
+    };
+
 const Map: React.FC<MapProps> = ({ nodes }) => {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -74,6 +127,9 @@ const Map: React.FC<MapProps> = ({ nodes }) => {
       center: [-45, 0], // Balanced so both Norway (north) and New Zealand (south) stay visible
       zoom: 1,
       zoomControl: false,
+      // Attribution is rendered as a React overlay (see JSX below): this container
+      // (minHeight 400px) is taller than the visible card, so Leaflet's own
+      // bottom-right control would be clipped by the card's overflow-hidden.
       attributionControl: false,
       // Disable automatic animations and interactions that could cause unwanted movement
       zoomAnimation: false,
@@ -87,13 +143,8 @@ const Map: React.FC<MapProps> = ({ nodes }) => {
       dragging: true,
     });
 
-    // Dark mode tile layer using CartoDB Dark Matter
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 10,
-    }).addTo(map);
+    // Dark basemap (Esri by default, CARTO Dark Matter when VITE_CARTO_API_KEY is set)
+    L.tileLayer(BASEMAP.url, BASEMAP.options).addTo(map);
 
     mapRef.current = map;
 
@@ -309,6 +360,11 @@ const Map: React.FC<MapProps> = ({ nodes }) => {
             <span>Regular Node</span>
           </div>
         </div>
+      </div>
+
+      {/* Basemap attribution (required by the tile provider's terms) */}
+      <div className="absolute right-2 bottom-2 z-[500] max-w-[75%] rounded border border-gray-700 bg-gray-900/80 px-1.5 py-0.5 text-right text-[10px] leading-tight text-gray-400 backdrop-blur-sm">
+        {BASEMAP.attribution}
       </div>
 
       {/* Custom tooltip rendered via portal */}

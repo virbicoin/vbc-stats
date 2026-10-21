@@ -3,6 +3,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# Optional CARTO basemap key for the client bundle (also read from .env when present):
+#   docker build --build-arg VITE_CARTO_API_KEY=... .
+ARG VITE_CARTO_API_KEY
 RUN npm run build
 
 FROM node:22-alpine

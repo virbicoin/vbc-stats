@@ -97,6 +97,7 @@ git push --no-verify
 PORT=5000              # 統合サーバーポート（Vite/static + WebSocket）
 WS_SECRET=xxx          # WebSocket認証シークレット（複数可：xxx|yyy|zzz）
 VITE_WS_URL=           # クライアント用WebSocket URL（省略時は同一オリジン、Viteがバンドルに露出）
+VITE_CARTO_API_KEY=    # 任意。CARTO ベースマップの API キー（未設定なら Esri のキー不要タイル。ビルド時に埋め込み）
 ```
 
 ## 重要な実装パターン
@@ -185,6 +186,18 @@ useEffect(() => {
 - 目標ブロックタイムは 12 秒（statsの`avgBlockTime`があれば優先して残り時間を推定）
 - go-virbicoin側で報酬スケジュールが変更された場合はこのコンポーネントの定数も更新すること
 
+### 8. 地図タイルプロバイダ（Map.tsx）
+
+`src/components/Map.tsx` の `BASEMAP` 定数（タイル URL・Leaflet オプション・帰属表示 JSX）がベースマップを決める：
+
+- 既定: Esri World Dark Gray Base（API キー不要、URL は `{z}/{y}/{x}` 順、全世界はズーム 10 まで）。
+  Esri は mature support（データ更新なし）で 2029 年 12 月に廃止予定のため、それまでに再度差し替えが必要
+- `VITE_CARTO_API_KEY` 設定時: CARTO Dark Matter（2026-09-25 以降キー必須、`?key=` で付与）。
+  キーはクライアントバンドルに埋め込まれるため、CARTO ダッシュボードでサイト（ホスト名）制限を掛けること
+- いずれの提供元も帰属表示が利用条件。Leaflet コンテナ（`minHeight: 400px`）はカード（`h-64`）より高く、下部が
+  `overflow-hidden` で切れるため、Leaflet 標準の attribution control ではなく地図右下の React オーバーレイで表示している。
+  このオーバーレイは削除しないこと
+
 ## コードスタイルガイドライン
 
 ### TypeScript
@@ -260,6 +273,7 @@ export default function ComponentName(): React.ReactNode {
 5. **Total Difficultyが表示されない**: gethは`totalDiff`フィールド名で文字列として送信
 6. **マップでブロック番号が"0"**: `block !== undefined && block > 0`でフィルタリング
 7. **ビルド成果物が古い**: `dist/`を削除して`npm run build`、ブラウザをハードリフレッシュ（Ctrl+Shift+R）
+8. **地図タイルが「API KEY REQUIRED」になる**: CARTO の無料タイルは 2026-09-25 以降 API キー必須。既定の Esri タイルに戻すには `VITE_CARTO_API_KEY` を空にして再ビルド。CARTO を使う場合は有効なキーを設定して再ビルド（詳細は「8. 地図タイルプロバイダ」）
 
 ## コミット署名（GPG）
 
