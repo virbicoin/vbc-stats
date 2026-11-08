@@ -152,26 +152,43 @@ function setGeo(node: NodeData, ip: string): NodeData {
   return node;
 }
 
-// Function to extract IP from spark connection
+// Headers that carry the real client IP, in order of preference.
+//
+// `X-Forwarded-For` is deliberately NOT trusted by default: Nginx appends to
+// whatever the client sent, so a reporter can prepend any address and forge its
+// apparent origin. A rogue reporter did exactly that, showing up as 1.2.3.4 and
+// slipping past any IP-based block. The defaults below are headers the edge
+// overwrites and the client therefore cannot control: Cloudflare sets
+// `CF-Connecting-IP`, and Nginx sets `X-Real-IP` from `$remote_addr`.
+// Override with TRUSTED_IP_HEADERS (comma-separated) for other deployments.
+const TRUSTED_IP_HEADERS = (process.env.TRUSTED_IP_HEADERS || 'cf-connecting-ip,x-real-ip')
+  .split(',')
+  .map((h) => h.trim().toLowerCase())
+  .filter(Boolean);
+
+// Resolve the client IP of a spark, preferring headers the client cannot forge.
 function getNodeIP(spark: any): string | null {
-  if (spark.address && spark.address.ip) {
-    return spark.address.ip;
+  const headers = spark?.request?.headers;
+  if (headers) {
+    for (const name of TRUSTED_IP_HEADERS) {
+      const raw = headers[name];
+      const value = Array.isArray(raw) ? raw[0] : raw;
+      if (typeof value === 'string' && value.trim()) {
+        // Even a trusted header may carry a list; the first entry is the client.
+        return value.split(',')[0].trim();
+      }
+    }
   }
 
-  if (spark.request && spark.request.connection && spark.request.connection.remoteAddress) {
+  // No trusted header (direct connection, or a proxy that sets neither).
+  if (spark?.request?.connection?.remoteAddress) {
     return spark.request.connection.remoteAddress;
   }
 
-  if (spark.request && spark.request.headers) {
-    const forwardedFor = spark.request.headers['x-forwarded-for'];
-    if (forwardedFor) {
-      return forwardedFor.split(',')[0].trim();
-    }
-
-    const realIP = spark.request.headers['x-real-ip'];
-    if (realIP) {
-      return realIP;
-    }
+  // Last resort: Primus' own view, which may itself be derived from
+  // X-Forwarded-For and so is only used when nothing better exists.
+  if (spark?.address?.ip) {
+    return spark.address.ip;
   }
 
   return null;
@@ -430,6 +447,11 @@ function serializeNode(node: NodeData) {
 // BEHIND the median are kept because that is genuine sync lag, not forgery.
 const BLOCK_LEAD_TOLERANCE = 100;
 
+// How far ahead of the highest height seen so far a reporter may claim to be
+// before its block is dropped at ingestion (~2 weeks of blocks at the 12s
+// target). Wide on purpose: see the ingestion guard in the `block` handler.
+const MAX_BLOCK_LEAD = 100_000;
+
 function getConsensusBlockHeight(allNodes: NodeData[]): number {
   const heights = allNodes
     .map((node) => node.stats?.block?.number || 0)
@@ -571,21 +593,26 @@ apiPrimus.on('connection', (spark: any) => {
 
   spark.on('hello', (data: any) => {
     console.log('API CON Hello', data.id);
+    // Resolve the IP from trusted headers so the ban list cannot be side-stepped
+    // by forging X-Forwarded-For.
+    const clientIP = getNodeIP(spark) || spark.address.ip;
     if (
       !data.secret ||
       WS_SECRET.indexOf(data.secret) === -1 ||
-      banned.includes(spark.address.ip) ||
+      banned.includes(clientIP) ||
       !data.id ||
       reserved.includes(data.id)
     ) {
       spark.end(undefined, { reconnect: false });
-      console.error('API CON Closed - wrong auth', data);
+      // Never log `data` itself: it carries the shared secret, which would then
+      // sit in the journal for anyone who can read logs.
+      console.error('API CON Closed - wrong auth', { id: data?.id, ip: clientIP });
       return;
     }
 
     spark.auth = true;
     spark.nodeId = data.id;
-    data.ip = spark.address.ip;
+    data.ip = clientIP;
     data.spark = spark.id;
     data.latency = spark.latency || 0;
 
@@ -595,7 +622,7 @@ apiPrimus.on('connection', (spark: any) => {
       spark.helloTimer = null;
     }
 
-    const nodeIP = getNodeIP(spark) || spark.address.ip;
+    const nodeIP = clientIP;
 
     Nodes.add(data, (err, info) => {
       if (!err && info) {
@@ -692,6 +719,41 @@ apiPrimus.on('connection', (spark: any) => {
     const block = data.block || data;
     if (!block || block.timestamp === undefined || block.timestamp === null) {
       console.error('Received block without timestamp:', data);
+      return;
+    }
+
+    // Reject absurd heights before they reach the collection. Authenticating only
+    // proves a reporter knows the shared secret, not that it is honest: one was
+    // reporting block 999,999,998. Dropping it here (not just when the headline is
+    // computed) keeps the forged height out of per-node state, propagation history
+    // and the charts as well.
+    //
+    // The reference is the highest height ALREADY accepted, with a deliberately
+    // wide margin — not the median with a tight one. After an outage every
+    // reporter can be far behind the real chain, and the first node to catch up
+    // would legitimately jump well past the others; a tight median-based bound
+    // would reject exactly that recovery. A forged height is orders of magnitude
+    // out, so a wide bound still catches it. The tight, median-based rule stays
+    // where it is safe to be strict: computing the headline best block.
+    const reportedNumber = Number(block.number);
+    if (!Number.isInteger(reportedNumber) || reportedNumber < 0) {
+      console.warn('Rejected block with invalid number from', spark.nodeId, ':', block.number);
+      return;
+    }
+    const highestAccepted = Nodes.all().reduce((max, node) => {
+      const n = node.stats?.block?.number;
+      return typeof n === 'number' && Number.isFinite(n) && n > max ? n : max;
+    }, 0);
+    if (highestAccepted > 0 && reportedNumber > highestAccepted + MAX_BLOCK_LEAD) {
+      console.warn(
+        'Rejected implausible block from',
+        spark.nodeId,
+        ':',
+        reportedNumber,
+        '(highest accepted',
+        highestAccepted,
+        ')'
+      );
       return;
     }
 

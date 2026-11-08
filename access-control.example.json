@@ -1,0 +1,5 @@
+{
+  "_comment": "Copy to access-control.json (git-ignored) or point ACCESS_CONTROL_FILE at it, then restart the server. banned: client IPs refused at hello. reserved: node ids that may never register.",
+  "banned": [],
+  "reserved": []
+}

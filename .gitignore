@@ -52,3 +52,6 @@ stats.json
 # deployment-specific geo overrides (keep the .example, ignore the real one)
 geo-overrides.json
 .claude/
+
+# Operator deny lists (see access-control.example.json)
+access-control.json
