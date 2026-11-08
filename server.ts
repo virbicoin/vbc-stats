@@ -420,10 +420,37 @@ function serializeNode(node: NodeData) {
   };
 }
 
+// The ethstats reporting protocol trusts whatever block number a reporter sends.
+// A node that has authenticated (valid WS_SECRET) can therefore claim an absurd
+// height — a rogue reporter was sending block 999,999,998, which won the naive
+// Math.max below and poisoned the dashboard's headline "best block". Derive a
+// consensus height from the MEDIAN of all reported heights (robust while honest
+// nodes are the majority) and ignore anything implausibly far ahead of it. A
+// real node can be a few blocks ahead mid-propagation, never millions; nodes
+// BEHIND the median are kept because that is genuine sync lag, not forgery.
+const BLOCK_LEAD_TOLERANCE = 100;
+
+function getConsensusBlockHeight(allNodes: NodeData[]): number {
+  const heights = allNodes
+    .map((node) => node.stats?.block?.number || 0)
+    .filter((n) => typeof n === 'number' && n > 0)
+    .sort((a, b) => a - b);
+  if (heights.length === 0) return 0;
+  return heights[Math.floor(heights.length / 2)];
+}
+
+function calculateBestBlock(allNodes: NodeData[]): number {
+  const consensus = getConsensusBlockHeight(allNodes);
+  const plausible = allNodes
+    .map((node) => node.stats?.block?.number || 0)
+    .filter((n) => n > 0 && (consensus === 0 || n <= consensus + BLOCK_LEAD_TOLERANCE));
+  return plausible.length ? Math.max(...plausible) : 0;
+}
+
 // Helper to calculate and return stats object
 function calculateStats(allNodes: NodeData[]) {
   const activeNodes = allNodes.filter((node) => node.stats?.active || node.id);
-  const bestBlock = Math.max(...allNodes.map((node) => node.stats?.block?.number || 0), 0);
+  const bestBlock = calculateBestBlock(allNodes);
   const avgBlockTime = calculateAvgBlockTime(allNodes);
   const totalDifficulty = calculateDifficulty(allNodes);
   const totalHashrate = calculateAvgHashrate(totalDifficulty, avgBlockTime);
