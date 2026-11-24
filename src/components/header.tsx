@@ -32,7 +32,7 @@ export default function Header() {
           </li>
           <li>
             <a
-              href="https://explorer.digitalregion.jp/"
+              href="https://explorer.virbicoin.com/"
               className="nav-link flex items-center gap-2 rounded-lg px-4 py-2 text-gray-300 transition-all duration-200 hover:bg-blue-500/10 hover:text-blue-400"
             >
               <MagnifyingGlassIcon className="h-5 w-5" />
@@ -41,7 +41,7 @@ export default function Header() {
           </li>
           <li>
             <a
-              href="https://pool.digitalregion.jp/"
+              href="https://pool.virbicoin.com/"
               rel="noopener noreferrer"
               target="_blank"
               className="nav-link flex items-center gap-2 rounded-lg px-4 py-2 text-gray-300 transition-all duration-200 hover:bg-blue-500/10 hover:text-blue-400"

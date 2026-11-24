@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SiGithub, SiX, SiBitcoin, SiDiscord, SiTelegram } from 'react-icons/si';
+import { SiGithub, SiX, SiBitcoin, SiDiscord } from 'react-icons/si';
 
 const Footer = () => {
   const [year] = useState<number>(() => new Date().getFullYear());
@@ -11,13 +11,13 @@ const Footer = () => {
           <span className="font-medium">&copy; 2024-{year} Digitalregion, Inc.</span>
           <span className="text-[#1e3a5f]">|</span>
           <a
-            href="https://github.com/virbicoin/vbcstats"
+            href="https://github.com/virbicoin/vbc-stats"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition-all duration-200 hover:bg-blue-500/10 hover:text-blue-400"
           >
             <SiGithub className="h-4 w-4" />
-            <span>vbcstats</span>
+            <span>vbc-stats</span>
           </a>
           <span className="text-[#1e3a5f]">|</span>
           <a
@@ -37,20 +37,12 @@ const Footer = () => {
             <SiBitcoin className="h-4 w-4" />
           </a>
           <a
-            href="https://discord.digitalregion.jp"
+            href="https://discord.virbicoin.com"
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-md p-2 transition-all duration-200 hover:bg-blue-500/10 hover:text-blue-400"
           >
             <SiDiscord className="h-4 w-4" />
-          </a>
-          <a
-            href="https://t.me/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-md p-2 transition-all duration-200 hover:bg-blue-500/10 hover:text-blue-400"
-          >
-            <SiTelegram className="h-4 w-4" />
           </a>
         </div>
       </div>
