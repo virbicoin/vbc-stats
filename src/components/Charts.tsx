@@ -101,7 +101,6 @@ const Charts: React.FC<ChartsProps> = ({ nodes = [] }) => {
           });
         }
 
-        // eslint-disable-next-line @eslint-react/set-state-in-effect
         setStaticTimeLabels(timeLabels);
         return data;
       };
