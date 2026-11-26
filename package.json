@@ -5,7 +5,7 @@
   "type": "module",
   "description": "A web application for visualizing VBC blockchain statistics.",
   "author": "Aoi Emerauda",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "keywords": [
     "vbc",
     "blockchain",

@@ -294,6 +294,10 @@ export default function ComponentName(): React.ReactNode {
 - コミット失敗を未然に防ぎたい場合は、コミット前にキャッシュを温める pre-commit フック
   （署名キャッシュが切れていればパスフレーズ入力を促す）を利用する方法があります。
 
+## ライセンス
+
+GPL-3.0（フォーク元の goerli/ethstats-server から継承。LICENSE はその全文）。README と package.json も GPL-3.0（2026-11 までは MIT と書いていて食い違っていた）。
+
 ## 関連リポジトリ
 
 VirBiCoin エコシステムは以下のリポジトリで構成されています:

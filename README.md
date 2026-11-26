@@ -27,8 +27,8 @@
   <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
   <img src="https://img.shields.io/badge/ESLint-10-4B32C3?style=flat-square&logo=eslint&logoColor=white" alt="ESLint">
   <img src="https://img.shields.io/badge/Node.js-≥24-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js">
-  <a href="https://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License: MIT">
+  <a href="https://www.gnu.org/licenses/gpl-3.0">
+    <img src="https://img.shields.io/badge/License-GPL--3.0-yellow?style=flat-square" alt="License: GPL-3.0">
   </a>
 </p>
 
@@ -297,7 +297,7 @@ Compatible with geth's built-in ethstats client:
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+GPL-3.0 - see [LICENSE](LICENSE) for details. VBC Stats is a fork of [goerli/ethstats-server](https://github.com/goerli/ethstats-server) (itself based on eth-netstats) and keeps its license.
 
 ---
 
