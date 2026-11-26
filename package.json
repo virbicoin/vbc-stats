@@ -30,7 +30,7 @@
   },
   "homepage": "https://github.com/virbicoin/vbc-stats#readme",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",

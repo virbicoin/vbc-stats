@@ -1,4 +1,4 @@
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -8,7 +8,7 @@ COPY . .
 ARG VITE_CARTO_API_KEY
 RUN npm run build
 
-FROM node:22-alpine
+FROM node:24-alpine
 RUN apk add --no-cache dumb-init
 WORKDIR /app
 COPY --chown=node:node --from=builder /app .

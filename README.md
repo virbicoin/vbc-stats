@@ -26,7 +26,7 @@
   <img src="https://img.shields.io/badge/TypeScript-6-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
   <img src="https://img.shields.io/badge/ESLint-10-4B32C3?style=flat-square&logo=eslint&logoColor=white" alt="ESLint">
-  <img src="https://img.shields.io/badge/Node.js-≥20-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js">
+  <img src="https://img.shields.io/badge/Node.js-≥24-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js">
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License: MIT">
   </a>
@@ -44,7 +44,7 @@
 - [Project Structure](#-project-structure)
 - [Architecture](#️-architecture)
 - [Configuration](#-configuration)
-- [Docker Deployment](#-docker-deployment)
+- [Deployment](#-deployment-ssg-static-frontend--websocket-backend)
 - [Security](#-security)
 - [geth Compatibility](#-geth-compatibility)
 - [Network Resources](#-network-resources)
@@ -104,7 +104,7 @@ Open [http://localhost:5000](http://localhost:5000) to view the dashboard.
 | Charts     | [Recharts](https://recharts.org)                 |
 | Maps       | [Leaflet](https://leafletjs.com) + React-Leaflet |
 | Real-time  | [Primus 8](https://github.com/primus/primus)     |
-| Backend    | [Express 5](https://expressjs.com) + Node.js 20+ |
+| Backend    | [Express 5](https://expressjs.com) + Node.js 24+ |
 | GeoIP      | geoip-lite                                       |
 | Linting    | ESLint 10 + Prettier 3                           |
 
