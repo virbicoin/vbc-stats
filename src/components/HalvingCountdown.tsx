@@ -9,6 +9,60 @@ const REDUCTION_INTERVAL = 2_100_000;
 const INITIAL_REWARD = 8;
 const MINIMUM_REWARD = 1;
 const DEFAULT_BLOCK_TIME = 12; // seconds (network target)
+// The reduction is months away, so the estimate uses a long average: the dashboard's average
+// covers only recent blocks and runs weeks early or late when the hashrate changes.
+const RPC_URL = (import.meta.env.VITE_RPC_URL ?? 'https://rpc.virbicoin.com').trim();
+const SAMPLE_BLOCKS = 200_000;
+const SAMPLE_REFRESH_MS = 60 * 60 * 1000;
+
+interface RpcBlock {
+  number: string;
+  timestamp: string;
+}
+
+async function rpcBlock(tag: string): Promise<RpcBlock> {
+  const res = await fetch(RPC_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'eth_getBlockByNumber',
+      params: [tag, false],
+    }),
+  });
+  const body = (await res.json()) as { result?: RpcBlock };
+  if (!body.result) throw new Error('no block');
+  return body.result;
+}
+
+/** Seconds per block over the last SAMPLE_BLOCKS blocks, from the public RPC; null until known. */
+function useLongTermBlockTime(): number | null {
+  const [value, setValue] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const load = async (): Promise<void> => {
+      try {
+        const latest = await rpcBlock('latest');
+        const head = parseInt(latest.number, 16);
+        const from = Math.max(0, head - SAMPLE_BLOCKS);
+        const old = await rpcBlock(`0x${from.toString(16)}`);
+        const seconds =
+          (parseInt(latest.timestamp, 16) - parseInt(old.timestamp, 16)) / (head - from);
+        if (!cancelled && Number.isFinite(seconds) && seconds > 0) setValue(seconds);
+      } catch {
+        // keep the previous value; the dashboard's average is the fallback
+      }
+    };
+    void load();
+    const timer = setInterval(() => void load(), SAMPLE_REFRESH_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
+  return value;
+}
 
 // Fork names for each reward reduction block (params/config.go)
 const FORK_NAMES: Record<number, string> = {
@@ -115,10 +169,12 @@ export default function HalvingCountdown({
   const currentReward = hasBlock ? getRewardAtBlock(bestBlock) : null;
   const nextBlock = hasBlock ? getNextReductionBlock(bestBlock) : null;
   const atMinimum = hasBlock && nextBlock === null;
+  const longTermBlockTime = useLongTermBlockTime();
   const blockTime =
-    typeof avgBlockTime === 'number' && !isNaN(avgBlockTime) && avgBlockTime > 0
+    longTermBlockTime ??
+    (typeof avgBlockTime === 'number' && !isNaN(avgBlockTime) && avgBlockTime > 0
       ? avgBlockTime
-      : DEFAULT_BLOCK_TIME;
+      : DEFAULT_BLOCK_TIME);
 
   const blocksRemaining = hasBlock && nextBlock !== null ? nextBlock - bestBlock : null;
   const eraStart =
@@ -194,6 +250,12 @@ export default function HalvingCountdown({
             </span>
             <span>
               {blocksRemaining !== null && `${blocksRemaining.toLocaleString()} blocks remaining`}
+              {blocksRemaining !== null &&
+                ` · ${blockTime.toFixed(1)} s per block (${
+                  longTermBlockTime !== null
+                    ? `average of the last ${SAMPLE_BLOCKS.toLocaleString()} blocks`
+                    : 'recent average'
+                })`}
             </span>
           </div>
         </div>
